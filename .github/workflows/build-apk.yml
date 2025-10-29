@@ -8,39 +8,54 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      NODE_OPTIONS: --max_old_space_size=4096
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
+    - name: Install dependencies
+      run: |
+        npm install
 
-      - name: Build React app
-        run: npm run build
+    - name: Build React PWA
+      run: |
+        npm run build
 
-      - name: Install Capacitor CLI and Android platform
-        run: |
-          npm install @capacitor/cli @capacitor/android
-          npx cap add android || true
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
 
-      - name: Sync web assets
-        run: npx cap sync android
+    - name: Install Android SDK
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 33
+        target: default
+        arch: x86_64
+        script: echo "SDK installed"
 
-      - name: Build APK (debug)
-        run: |
-          cd android
-          ./gradlew assembleDebug
+    - name: Prepare gradlew
+      run: |
+        chmod +x android/gradlew
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: PlayerProgress-debug.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+    - name: Sync Capacitor Android
+      run: |
+        npx cap sync android
+
+    - name: Build APK
+      run: |
+        cd android
+        ./gradlew assembleDebug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: PlayerProgress-debug.apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+
