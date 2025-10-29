@@ -1,0 +1,41 @@
+name: Build and upload APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # дозволяє запуск вручну
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        attempt: [1, 2, 3]  # до 3 спроб
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build APK (attempt ${{ matrix.attempt }})
+        run: |
+          echo "Attempt ${{ matrix.attempt }} of 3"
+          ./gradlew assembleRelease || exit 1
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
