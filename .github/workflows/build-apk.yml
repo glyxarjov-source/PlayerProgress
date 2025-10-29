@@ -1,61 +1,37 @@
-name: Build APK
+name: Build and upload APK
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        attempt: [1, 2, 3]  # До 3 спроб
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    - name: Install dependencies
-      run: |
-        npm install
+      - name: Build APK
+        run: |
+          echo "Attempt ${{ matrix.attempt }} of 3"
+          ./gradlew assembleRelease || exit 1
 
-    - name: Build React PWA
-      run: |
-        npm run build
-
-    - name: Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Install Android SDK
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 33
-        target: default
-        arch: x86_64
-        script: echo "SDK installed"
-
-    - name: Prepare gradlew
-      run: |
-        chmod +x android/gradlew
-
-    - name: Sync Capacitor Android
-      run: |
-        npx cap sync android
-
-    - name: Build APK
-      run: |
-        cd android
-        ./gradlew assembleDebug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: PlayerProgress-debug.apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
-
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
